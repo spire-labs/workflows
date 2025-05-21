@@ -7,6 +7,9 @@ on:
         default: stable
         description: rust version to use for checks
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -31,7 +34,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
-      
+
       - name: Install cargo check tools
         run: |
           cargo install --locked cargo-deny || true
@@ -48,7 +51,6 @@ jobs:
           taplo lint
           taplo fmt --check
 
-
       - name: Dependency Check
         run: |
           cargo deny check
@@ -60,4 +62,3 @@ jobs:
 
       - name: Test
         run: cargo test --all-targets --all-features
-
