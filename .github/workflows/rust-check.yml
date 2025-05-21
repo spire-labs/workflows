@@ -35,9 +35,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock')}}-${{ github.ref_name }}
-          restore-keys: 
-            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock')}}-main
-            ${{ runner.os }}-cargo-
+          restore-keys: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock')}}-main
 
       - name: Install cargo check tools
         run: |

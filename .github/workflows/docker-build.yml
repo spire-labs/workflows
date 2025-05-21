@@ -40,9 +40,7 @@ jobs:
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.ref_name }}
-          restore-keys: 
-            ${{ runner.os }}-buildx-main
-            ${{ runner.os }}-buildx-
+          restore-keys: ${{ runner.os }}-buildx-main
 
 
       - name: Build Docker with build-args
