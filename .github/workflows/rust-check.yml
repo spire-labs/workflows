@@ -37,12 +37,14 @@ jobs:
 
       - name: Install cargo check tools
         run: |
-          cargo install --locked cargo-deny || true
-          cargo install --locked cargo-outdated || true
-          cargo install --locked cargo-udeps || true
-          cargo install --locked cargo-audit || true
-          cargo install --locked cargo-pants || true
-          cargo install --locked taplo-cli || true
+          for tool in cargo-deny cargo-outdated cargo-udeps cargo-audit cargo-pants taplo-cli; do
+            if ! command -v "$tool" &> /dev/null; then
+              echo "Installing $tool..."
+              cargo install --locked "$tool" || true
+            else
+              echo "$tool already installed"
+            fi
+          done
 
       - name: Lint
         run: |
