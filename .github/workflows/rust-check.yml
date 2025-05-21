@@ -38,7 +38,6 @@ jobs:
           restore-keys: 
             ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock')}}-main
             ${{ runner.os }}-cargo-
-          retention-days: 7
 
       - name: Install cargo check tools
         run: |
