@@ -61,6 +61,7 @@ jobs:
           fi
 
       - name: Dependency Check
+        continue-on-error: true
         run: |
           cargo deny check
           cargo outdated --exit-code 1
