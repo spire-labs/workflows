@@ -37,6 +37,7 @@ jobs:
 
       - name: Install cargo check tools
         run: |
+          ls -al ~/.cargo/bin/
           for tool in cargo-deny cargo-outdated cargo-udeps cargo-audit cargo-pants taplo-cli; do
             if ! command -v "$tool" &> /dev/null; then
               echo "Installing $tool..."
