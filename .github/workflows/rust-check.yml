@@ -32,11 +32,6 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
       
-      - name: Lint
-        run: |
-          cargo fmt --all -- --check
-          cargo clippy --all-targets --all-features -- -D warnings
-
       - name: Install cargo check tools
         run: |
           cargo install --locked cargo-deny || true
@@ -44,8 +39,17 @@ jobs:
           cargo install --locked cargo-udeps || true
           cargo install --locked cargo-audit || true
           cargo install --locked cargo-pants || true
+          cargo install --locked taplo-cli || true
 
-      - name: Check
+      - name: Lint
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --all-targets --all-features -- -D warnings
+          taplo lint
+          taplo fmt --check
+
+
+      - name: Dependency Check
         run: |
           cargo deny check
           cargo outdated --exit-code 1
