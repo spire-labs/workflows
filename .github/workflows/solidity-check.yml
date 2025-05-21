@@ -1,0 +1,48 @@
+on:
+    workflow_call:
+      secrets:
+        ETHEREUM_RPC_URL:
+          required: true
+          
+jobs:
+  contracts-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        
+      - name: Run Contracts Unit Tests
+        run: make test-contracts
+
+  contracts-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        
+      - name: Run Contracts Linting
+        run: make lint-check-contracts
+
+  contracts-integration-tests:
+    runs-on: ubuntu-latest
+    env:
+      ETHEREUM_RPC_URL: ${{ secrets.ETHEREUM_RPC_URL }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        
+      - name: Run Contracts Integration Tests
+        run: make test-contracts-integration
+    
