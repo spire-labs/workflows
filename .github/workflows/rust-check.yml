@@ -51,14 +51,6 @@ jobs:
           taplo lint
           taplo fmt --check
       
-      - name: Generate deny config if missing
-        run: |
-          if [ ! -f deny.toml ]; then
-            cat > deny.toml <<EOF
-            [licenses]
-            allow-osi-approved = true
-            EOF
-          fi
 
       - name: Dependency Check
         continue-on-error: true
