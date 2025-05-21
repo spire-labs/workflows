@@ -35,6 +35,16 @@ jobs:
             type=edge
             type=sha,format=long
 
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.ref_name }}
+          restore-keys: 
+            ${{ runner.os }}-buildx-main
+            ${{ runner.os }}-buildx-
+
+
       - name: Build Docker with build-args
         uses: docker/build-push-action@v5
         if: ${{ inputs.build-args != ''}}
@@ -43,9 +53,13 @@ jobs:
           file: Dockerfile
           push: false
           build-args: ${{inputs.build-args}}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          
+          cache-from: |
+            type=gha
+            type=local,src=/tmp/.buildx-cache
+          cache-to: |
+            type=gha,mode=max
+            type=local,dest=/tmp/.buildx-cache,mode=max
+
       - name: Build Docker without build-args
         uses: docker/build-push-action@v5
         if: ${{ inputs.build-args == ''}}
@@ -53,5 +67,9 @@ jobs:
           context: .
           file: Dockerfile
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha
+            type=local,src=/tmp/.buildx-cache
+          cache-to: |
+            type=gha,mode=max
+            type=local,dest=/tmp/.buildx-cache,mode=max
