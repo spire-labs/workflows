@@ -1,0 +1,65 @@
+on:
+  workflow_call:
+    inputs:
+      platforms:
+        type: string
+        required: false
+        default: linux/amd64
+      build-args:
+        type: string
+        required: false
+        default: |
+          GITHUB_SHA=${{ github.sha }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Set up tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ github.repository }}:{${{ github.sha }}}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=edge
+            type=sha,format=long
+
+      - name: Build Docker with build-args
+        uses: docker/build-push-action@v5
+        if: ${{ inputs.build-args != ''}}
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          build-args: ${{inputs.build-args}}
+          cache-from: |
+            type=gha
+            type=registry,ref=${{ github.repository }}:buildcache
+          cache-to: |
+            type=gha
+            type=registry,ref=${{ github.repository }}:buildcache,mode=max
+
+      - name: Build Docker without build-args
+        uses: docker/build-push-action@v5
+        if: ${{ inputs.build-args == ''}}
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          cache-from: |
+              type=gha
+              type=registry,ref=${{ github.repository }}:buildcache
+          cache-to: |
+              type=gha
+              type=registry,ref=${{ github.repository }}:buildcache,mode=max
