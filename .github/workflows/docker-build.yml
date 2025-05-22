@@ -1,14 +1,12 @@
 on:
   workflow_call:
     inputs:
-      platforms:
-        type: string
-        required: false
-        default: linux/amd64
       build-args:
         type: string
         required: false
         default: |
+          BUILDKIT_INLINE_CACHE=1
+          DOCKER_BUILDKIT=1
           GITHUB_SHA=${{ github.sha }}
 
 jobs:
@@ -18,23 +16,9 @@ jobs:
       - name: Check out
         uses: actions/checkout@v3
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         
-      - name: Set up tags
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ github.repository }}:${{ github.sha }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=edge
-            type=sha,format=long
-
       - name: Cache Docker layers
         uses: actions/cache@v4
         with:
@@ -42,32 +26,22 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.ref_name }}
           restore-keys: ${{ runner.os }}-buildx-main
 
+      - name: Build Docker Image
+        run: |
+          # Split the build-args string into an array (newline-separated)
+          IFS=$'\n' read -r -a build_args_array <<< "${{ inputs.build-args }}"
 
-      - name: Build Docker with build-args
-        uses: docker/build-push-action@v5
-        if: ${{ inputs.build-args != ''}}
-        with:
-          context: .
-          file: Dockerfile
-          push: false
-          build-args: ${{inputs.build-args}}
-          cache-from: |
-            type=gha
-            type=local,src=/tmp/.buildx-cache
-          cache-to: |
-            type=gha,mode=max
-            type=local,dest=/tmp/.buildx-cache,mode=max
+          # Construct the --build-arg options
+          build_arg_options=""
+          for arg in "${build_args_array[@]}"; do
+            build_arg_options+="--build-arg $arg "
+          done
 
-      - name: Build Docker without build-args
-        uses: docker/build-push-action@v5
-        if: ${{ inputs.build-args == ''}}
-        with:
-          context: .
-          file: Dockerfile
-          push: false
-          cache-from: |
-            type=gha
-            type=local,src=/tmp/.buildx-cache
-          cache-to: |
-            type=gha,mode=max
-            type=local,dest=/tmp/.buildx-cache,mode=max
+          # Execute the Docker build command
+          docker buildx build \
+            --file Dockerfile \
+            --tag ${{ github.repository }}:${{ github.sha }} \
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --cache-to type=local,dest=/tmp/.buildx-cache,mode=max \
+            $build_arg_options \
+            --load .
