@@ -41,7 +41,11 @@ jobs:
         run: |
           ls -al ~/.cargo/bin/
           for tool in cargo-deny cargo-outdated cargo-udeps cargo-audit cargo-pants taplo-cli; do
-            if ! command -v "$tool" &> /dev/null; then
+            binary=$tool
+            if [ "$tool" = "taplo-cli" ]; then
+              binary=taplo
+            fi
+            if ! command -v "$binary" &> /dev/null; then
               echo "Installing $tool..."
               cargo install --locked "$tool" || true
             else
