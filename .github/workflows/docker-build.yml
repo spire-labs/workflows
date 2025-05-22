@@ -13,6 +13,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Set year and month
+        run: |
+          echo "YYYY_MM_DD=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
       - name: Check out
         uses: actions/checkout@v3
 
@@ -23,8 +27,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.ref_name }}
-          restore-keys: ${{ runner.os }}-buildx-main
+          key: ${{ runner.os }}-buildx-${{ github.ref_name }}-${{ env.YYYY_MM_DD }}
+          restore-keys:
+            ${{ runner.os }}-buildx-main-${{ env.YYYY_MM_DD }}
+            ${{ runner.os }}-buildx-main-
 
       - name: Build Docker Image
         run: |
