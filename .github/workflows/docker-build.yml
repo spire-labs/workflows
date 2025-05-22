@@ -5,8 +5,6 @@ on:
         type: string
         required: false
         default: |
-          BUILDKIT_INLINE_CACHE=1
-          DOCKER_BUILDKIT=1
           GITHUB_SHA=${{ github.sha }}
 
 permissions:
@@ -30,13 +28,32 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set safe tag name
+        id: tag
+        run: |
+          REF="${{ github.head_ref || github.ref_name }}"
+          SAFE_REF=$(echo "$REF" | sed 's#[^a-zA-Z0-9._-]#-#g')
+          echo "value=$SAFE_REF" >> $GITHUB_OUTPUT
+
+      - name: Pull cache images
+        run: | 
+          docker pull ghcr.io/${{ github.repository }}:${{ github.sha }} || true
+          docker pull ghcr.io/${{ github.repository }}:${{ steps.tag.outputs.value }} || true
+          docker pull ghcr.io/${{ github.repository }}:main || true
+
       - name: Build & push with build args
         uses: docker/build-push-action@v4
         with:
           context: .
           file: Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}:${{github.sha}}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}:${{ steps.tag.outputs.value }}
+          cache-from: |
+            type=gha
+            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache
+          cache-to: |
+            type=gha,mode=max
+            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
           build-args: ${{ inputs.build-args }}
