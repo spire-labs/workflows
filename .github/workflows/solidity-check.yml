@@ -1,8 +1,19 @@
 on:
-    workflow_call:
-      secrets:
-        ETHEREUM_RPC_URL:
-          required: true
+  workflow_call:
+    inputs:
+      contract-directory:
+        type: string
+        required: false
+        default: contracts
+        description: the root folder for contracts
+      run-integration-tests:
+        type: boolean
+        required: false
+        default: true
+        description: whether to run integration tests
+    secrets:
+      ETHEREUM_RPC_URL:
+        required: false
           
 jobs:
   contracts-unit-tests:
@@ -16,7 +27,10 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         
       - name: Run Contracts Unit Tests
-        run: make test-contracts
+        run: |
+          echo "INFO: Running Solidity tests..."
+          cd ${{inputs.contract-directory}}
+          forge test -vvv --mc Unit
 
   contracts-lint:
     runs-on: ubuntu-latest
@@ -29,10 +43,14 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         
       - name: Run Contracts Linting
-        run: make lint-check-contracts
+        run: |
+          echo "INFO: Checking Solidity formatting..."
+          cd ${{inputs.contract-directory}}
+          forge fmt --check
 
   contracts-integration-tests:
     runs-on: ubuntu-latest
+    if: ${{ inputs.run-integration-tests == true }}
     env:
       ETHEREUM_RPC_URL: ${{ secrets.ETHEREUM_RPC_URL }}
     steps:
@@ -44,5 +62,8 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         
       - name: Run Contracts Integration Tests
-        run: make test-contracts-integration
+        run: |
+          echo "INFO: Running Solidity integration tests..."
+          cd ${{inputs.contract-directory}}
+          forge test -vvv --mc Integration
     
