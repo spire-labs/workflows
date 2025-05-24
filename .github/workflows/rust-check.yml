@@ -23,6 +23,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ inputs.rust-version }}
+          components: rustfmt
 
       - name: Set up cargo cache
         uses: actions/cache@v4
@@ -38,20 +39,9 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock')}}-main
 
       - name: Install cargo check tools
-        run: |
-          ls -al ~/.cargo/bin/
-          for tool in cargo-deny cargo-outdated cargo-udeps cargo-audit cargo-pants taplo-cli; do
-            binary=$tool
-            if [ "$tool" = "taplo-cli" ]; then
-              binary=taplo
-            fi
-            if ! command -v "$binary" &> /dev/null; then
-              echo "Installing $tool..."
-              cargo install --locked "$tool" || true
-            else
-              echo "$tool already installed"
-            fi
-          done
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny,cargo-udeps,cargo-audit,cargo-outdated,cargo-pants,osv-scanner,taplo
 
       - name: Lint
         run: |
