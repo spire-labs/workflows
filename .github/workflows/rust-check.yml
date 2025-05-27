@@ -1,13 +1,5 @@
 on:
   workflow_call:
-    inputs:
-      rust-version:
-        type: string
-        required: false
-        default: nightly
-        description: rust version to use for checks
-  schedule:
-    - cron: '0 7 * * 1'  # Runs every Monday at 07:00 UTC on main
 
 env:
   CARGO_TERM_COLOR: always
@@ -21,22 +13,9 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ inputs.rust-version }}
-          components: rustfmt
 
-      - name: Set up cargo cache
-        uses: actions/cache@v4
-        continue-on-error: false
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock')}}-${{ github.ref_name }}
-          restore-keys: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock')}}-main
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
 
       - name: Install cargo check tools
         uses: taiki-e/install-action@v2
