@@ -18,7 +18,7 @@ on:
         type: string
           
 jobs:
-  contracts-unit-tests:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -31,7 +31,6 @@ jobs:
         run: |
           echo "${{ inputs['env-vars'] }}" | sed '/^\s*$/d' >> $GITHUB_ENV
 
-
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         
@@ -40,35 +39,12 @@ jobs:
           echo "INFO: Running Solidity tests..."
           cd ${{inputs.contract-directory}}
           forge test -vvv --mc Unit
-
-  contracts-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
         
       - name: Run Contracts Linting
         run: |
           echo "INFO: Checking Solidity formatting..."
           cd ${{inputs.contract-directory}}
           forge fmt --check
-
-  contracts-integration-tests:
-    runs-on: ubuntu-latest
-    if: ${{ inputs.run-integration-tests == true }}
-    env:
-      ETHEREUM_RPC_URL: ${{ secrets.ETHEREUM_RPC_URL }}
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
         
       - name: Run Contracts Integration Tests
         run: |
