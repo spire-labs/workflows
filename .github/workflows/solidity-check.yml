@@ -11,9 +11,11 @@ on:
         required: false
         default: true
         description: whether to run integration tests
-    secrets:
-      ETHEREUM_RPC_URL:
+      env-vars:
+        description: 'Multiline list of KEY=VALUE pairs to set in the environment'
         required: false
+        default: ''
+        type: string
           
 jobs:
   contracts-unit-tests:
@@ -23,6 +25,13 @@ jobs:
         with:
           submodules: recursive
       
+      - name: Set dynamic environment variables
+        if: ${{ inputs['env-vars'] != '' }}
+        shell: bash
+        run: |
+          echo "${{ inputs['env-vars'] }}" | sed '/^\s*$/d' >> $GITHUB_ENV
+
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         

@@ -1,5 +1,12 @@
 on:
   workflow_call:
+    inputs:
+      env-vars:
+        description: 'Multiline list of KEY=VALUE pairs to set in the environment'
+        required: false
+        default: ''
+        type: string
+
 
 env:
   CARGO_TERM_COLOR: always
@@ -21,6 +28,12 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-deny,cargo-udeps,cargo-audit,cargo-outdated,cargo-pants,osv-scanner,taplo
+
+      - name: Set dynamic environment variables
+        if: ${{ inputs['env-vars'] != '' }}
+        shell: bash
+        run: |
+          echo "${{ inputs['env-vars'] }}" | sed '/^\s*$/d' >> $GITHUB_ENV
 
       - name: Lint
         run: |
