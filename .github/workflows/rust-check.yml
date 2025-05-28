@@ -41,4 +41,4 @@ jobs:
           cargo pants
 
       - name: Test
-        run: cargo test --all-targets --all-features
+        run: cargo test --workspace --all-targets --all-features
