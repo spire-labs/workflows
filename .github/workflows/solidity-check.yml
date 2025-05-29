@@ -48,6 +48,7 @@ jobs:
           forge fmt --check
         
       - name: Run Contracts Integration Tests
+        if: ${{ inputs.run-integration-tests == true }}
         run: |
           echo "INFO: Running Solidity integration tests..."
           cd ${{inputs.contract-directory}}
