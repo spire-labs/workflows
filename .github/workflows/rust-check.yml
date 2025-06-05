@@ -6,6 +6,11 @@ on:
         required: false
         default: ''
         type: string
+      test-exclude:
+        description: "List of packages to exclude from cargo command test"
+        required: false
+        default: ""
+        type: string
 
 
 env:
@@ -55,4 +60,11 @@ jobs:
           cargo pants
 
       - name: Test
-        run: cargo test --workspace --all-targets --all-features
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.test-exclude }}" ]; then
+            EXCLUDE_FLAGS=$(printf '%s' "${{ inputs.test-exclude }}" | xargs -n1 printf -- "--exclude %s ")
+          else
+            EXCLUDE_FLAGS=""
+          fi
+          cargo test --workspace --all-targets --all-features $EXCLUDE_FLAGS
