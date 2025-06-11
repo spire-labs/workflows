@@ -29,6 +29,9 @@ jobs:
 
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: rust
+          key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install cargo check tools
         uses: taiki-e/install-action@v2
