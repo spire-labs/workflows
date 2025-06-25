@@ -63,3 +63,8 @@ jobs:
 
           git tag -a "${{ env.NOW_TAG }}" -F tag_message.txt
           git push origin "${{ env.NOW_TAG }}"
+
+          git tag -f "${{ inputs.target_env }}" -F tag_message.txt
+          git push origin "${{ inputs.target_env }}" --force
+          
+          
