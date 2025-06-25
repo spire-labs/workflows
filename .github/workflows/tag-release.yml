@@ -1,0 +1,65 @@
+name: Tag Environment
+
+on:
+  workflow_call:
+    inputs:
+      target_env:
+        required: true
+        type: string
+
+jobs:
+  tag-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag for ${{ inputs.target_env }}
+        id: lasttag
+        run: |
+          PREFIX="${{ inputs.target_env }}-"
+          LAST_TAG=$(git tag --list "$PREFIX*" --sort=-creatordate | head -n 1)
+          echo "LAST_TAG=$LAST_TAG" >> $GITHUB_ENV
+          echo "Last tag: $LAST_TAG"
+
+      - name: Generate tag name
+        run: |
+          NOW_TAG="${{ inputs.target_env }}-$(date +'%Y%m%d.%H%M%S')"
+          echo "NOW_TAG=$NOW_TAG" >> $GITHUB_ENV
+
+      - name: Generate changelog
+        run: |
+          if [ -z "$LAST_TAG" ]; then
+            git log --oneline > changes.txt
+            BASE_SHA=$(git rev-list --max-parents=0 HEAD)
+          else
+            git log --oneline "$LAST_TAG"..HEAD > changes.txt
+            BASE_SHA=$(git rev-list -n 1 "$LAST_TAG")
+          fi
+          echo "BASE_SHA=$BASE_SHA" >> $GITHUB_ENV
+
+      - name: Create annotated tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          COMMIT_SHA=$(git rev-parse HEAD)
+          REPO_URL="https://github.com/${{ github.repository }}"
+          COMPARE_URL="$REPO_URL/compare/${{ env.LAST_TAG }}...$COMMIT_SHA"
+
+          {
+            echo "Release: ${{ env.NOW_TAG }}"
+            echo ""
+            echo "Changes:"
+            cat changes.txt
+            echo ""
+            echo "Compare view:"
+            echo "$COMPARE_URL"
+          } > tag_message.txt
+
+          git tag -a "${{ env.NOW_TAG }}" -F tag_message.txt
+          git push origin "${{ env.NOW_TAG }}"
