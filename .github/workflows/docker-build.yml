@@ -29,6 +29,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set Docker Build Cache Key
+        id: cachekey
+        run: |
+            BRANCH_NAME=$(echo "${GITHUB_REF}" | sed 's|refs/heads/||')
+            BRANCH_HASH=$(echo -n "$BRANCH_NAME" | sha1sum | awk '{print $1}')
+            echo "CACHE_KEY=branch-$BRANCH_HASH" >> $GITHUB_ENV
+            echo $CACHE_KEY
 
       - name: Build & push with build args
         uses: docker/build-push-action@v4
@@ -39,9 +46,9 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.sha }}
           cache-from: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.run_id }}
+            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ env.CACHE_KEY }}
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache
           cache-to: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.run_id }},mode=max
+            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ env.CACHE_KEY }},mode=max
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
           build-args: ${{ inputs.build-args }}
