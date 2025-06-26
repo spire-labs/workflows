@@ -39,9 +39,9 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.sha }}
           cache-from: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref || github.ref_name }}
+            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.run_id }}
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache
           cache-to: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.head_ref || github.ref_name }},mode=max
+            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ github.run_id }},mode=max
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
           build-args: ${{ inputs.build-args }}
