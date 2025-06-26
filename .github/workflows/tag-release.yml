@@ -45,8 +45,8 @@ jobs:
 
       - name: Create annotated tag
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
           COMMIT_SHA=$(git rev-parse HEAD)
           REPO_URL="https://github.com/${{ github.repository }}"
           COMPARE_URL="$REPO_URL/compare/${{ env.LAST_TAG }}...$COMMIT_SHA"
