@@ -11,6 +11,11 @@ on:
         required: false
         default: ""
         type: string
+      runs-on:
+        description: "The OS to run the job on"
+        required: false
+        default: "ubuntu-latest"
+        type: string
 
 
 env:
@@ -19,7 +24,7 @@ env:
 jobs:
   check:
     name: "Rust Check"
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs['runs-on'] }}
     steps:
       - name: Check out
         uses: actions/checkout@v4
