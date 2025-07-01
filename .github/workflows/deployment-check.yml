@@ -1,0 +1,46 @@
+name: Deployment Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'URL to check for deployed commit SHA'
+        type: string
+        required: true
+      commit-sha:
+        description: 'Expected commit SHA to check against'
+        required: true
+        type: string
+
+  workflow_call:
+    inputs:
+      url:
+        type: string
+        required: true
+      commit-sha:
+        type: string
+        required: true
+        default: ${{ github.sha }}
+
+jobs:
+  check-deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deployed commit SHA
+        env:
+          CHECK_URL: ${{ inputs.url }}
+          EXPECTED_SHA: ${{ inputs.commit-sha }}
+        run: |
+          echo "Expecting deployed commit: $EXPECTED_SHA"
+          for i in {1..6}; do
+            DEPLOYED_SHA=$(curl -s $CHECK_URL | jq -r '.commit')
+            echo "Deployed commit: $DEPLOYED_SHA"
+            if [ "$DEPLOYED_SHA" = "$EXPECTED_SHA" ]; then
+              echo "Deployment matches expected commit."
+              exit 0
+            fi
+            echo "Commit does not match. Retrying in 5 seconds..."
+            sleep 5
+          done
+          echo "Deployment did not match expected commit after 30 seconds."
+          exit 1
