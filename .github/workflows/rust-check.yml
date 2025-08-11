@@ -62,8 +62,6 @@ jobs:
         continue-on-error: true
         run: |
           cargo deny check
-          rm -rf ~/.cargo/advisory-db
-          cargo audit
           cargo pants
 
       - name: Test
