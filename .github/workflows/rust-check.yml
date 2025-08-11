@@ -58,12 +58,10 @@ jobs:
           taplo fmt --check
       
 
-      - name: Dependency Check
+      - name: Security Check
         continue-on-error: true
         run: |
           cargo deny check
-          cargo outdated --exit-code 1
-          cargo udeps
           rm -rf ~/.cargo/advisory-db
           cargo audit
           cargo pants
