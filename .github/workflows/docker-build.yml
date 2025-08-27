@@ -10,7 +10,7 @@ on:
         type: string
         required: false
         default: "ubuntu-latest"
-
+        
 permissions:
   contents: read
   packages: write
@@ -56,3 +56,23 @@ jobs:
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ env.CACHE_KEY }},mode=max
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
           build-args: ${{ inputs.build-args }}
+
+      - name: Generate SBOM (CycloneDX)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+
+      - name: Scan image with Grype
+        uses: anchore/scan-action@v4
+        with:
+          image: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          fail-build: false          
+          severity-cutoff: medium

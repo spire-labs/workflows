@@ -22,6 +22,9 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+  actions: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -61,7 +64,6 @@ jobs:
           cargo clippy --workspace --all-targets --all-features -- -D warnings
           taplo lint
           taplo fmt --check
-      
 
       - name: Cargo Deny Check
         continue-on-error: ${{ inputs['continue-on-security-error'] }}
@@ -72,6 +74,11 @@ jobs:
         continue-on-error: ${{ inputs['continue-on-security-error'] }}
         run: |
           cargo audit
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: auto
 
       - name: Test
         shell: bash
