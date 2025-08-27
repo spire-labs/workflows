@@ -22,6 +22,10 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -61,13 +65,23 @@ jobs:
           cargo clippy --workspace --all-targets --all-features -- -D warnings
           taplo lint
           taplo fmt --check
-      
 
       - name: Security Check
         continue-on-error: ${{ inputs['continue-on-security-error'] }}
         run: |
           cargo deny check
           cargo pants
+
+      - name: Semgrep CE scan (free)
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:latest \
+            semgrep scan --config auto --sarif > semgrep.sarif
+
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
 
       - name: Test
         shell: bash
