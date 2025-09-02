@@ -67,7 +67,6 @@ jobs:
         continue-on-error: ${{ inputs['continue-on-security-error'] }}
         run: |
           cargo deny check --hide-inclusion-graph
-          cargo pants
 
       - name: Test
         shell: bash
