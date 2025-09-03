@@ -63,10 +63,15 @@ jobs:
           taplo fmt --check
       
 
-      - name: Security Check
+      - name: Cargo Deny Check
         continue-on-error: ${{ inputs['continue-on-security-error'] }}
         run: |
           cargo deny check --hide-inclusion-graph
+
+      - name: Cargo Audit Check
+        continue-on-error: ${{ inputs['continue-on-security-error'] }}
+        run: |
+          cargo audit
 
       - name: Test
         shell: bash
