@@ -1,0 +1,52 @@
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: "The OS to run the job on"
+        required: false
+        default: "ubuntu-latest"
+        type: string
+      continue-on-security-error:
+        description: "Continue on security check errors"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: "SAST Check"
+    runs-on: ${{ inputs['runs-on'] }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install Semgrep
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install semgrep
+
+      - name: Run Semgrep
+        id: semgrep
+        run: |
+          semgrep --config p/ci --error --json --output semgrep-report.json
+      
+      - name: Upload Semgrep results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-report.json
+
+      - name: Fail on findings
+        if: ${{ steps.semgrep.outcome != 'success' }}
+        continue-on-error: ${{ inputs['continue-on-security-error'] }}
+        run: |
+          echo "Semgrep found issues; fail the PR."
+          exit 1

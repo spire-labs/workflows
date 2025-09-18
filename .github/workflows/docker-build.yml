@@ -10,6 +10,11 @@ on:
         type: string
         required: false
         default: "ubuntu-latest"
+      continue-on-security-error:
+        description: "Continue on security check errors"
+        required: false
+        type: boolean
+        default: false
         
 permissions:
   contents: read
@@ -57,22 +62,58 @@ jobs:
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
           build-args: ${{ inputs.build-args }}
 
-      - name: Generate SBOM (CycloneDX)
+      - name: Generate SBOM
         uses: anchore/sbom-action@v0
         with:
           image: ghcr.io/${{ github.repository }}:${{ github.sha }}
-          format: cyclonedx-json
-          output-file: sbom.cdx.json
+          format: spdx-json
+          output-file: "${{ github.event.repository.name }}-sbom.spdx.json"
 
-      - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+      - name: Cache Grype DB
+        uses: actions/cache@v3
         with:
-          name: sbom-cyclonedx
-          path: sbom.cdx.json
+          path: ~/.cache/grype/
+          key: grype-db-${{ runner.os }}-v1
 
       - name: Scan image with Grype
-        uses: anchore/scan-action@v4
+        id: scan
+        uses: anchore/scan-action@v7
         with:
-          image: ghcr.io/${{ github.repository }}:${{ github.sha }}
-          fail-build: false          
+          fail-build: true
           severity-cutoff: medium
+          output-format: sarif
+          sbom: "${{ github.event.repository.name }}-sbom.spdx.json"
+        continue-on-error: ${{ inputs.continue-on-security-error }}
+
+      - name: Inspect action SARIF report
+        if: always()  
+        run: cat ${{ steps.scan.outputs.sarif }}
+
+      - name: Annotate SARIF findings
+        if: always()
+        run: |
+          jq -r '
+            .runs[].results[] |
+            "::error file=\(.locations[0].physicalLocation.artifactLocation.uri)," +
+            "line=\(.locations[0].physicalLocation.region.startLine)//0" +
+            "::[\(.ruleId)] \(.message.text)"
+          ' ${{ steps.scan.outputs.sarif }} || true
+
+      - name: Summarize SARIF findings
+        if: always()
+        run: |
+          echo "### Vulnerability Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Rule | Severity | File | Message |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|----------|------|---------|" >> $GITHUB_STEP_SUMMARY
+          jq -r '
+            .runs[].results[] |
+            "| \(.ruleId) | \(.properties.severity // "n/a") | \(.locations[0].physicalLocation.artifactLocation.uri) | \(.message.text) |"
+          ' ${{ steps.scan.outputs.sarif }} >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Upload SARIF report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sarif-report
+          path: ${{ steps.scan.outputs.sarif }}
