@@ -106,9 +106,11 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Rule | Severity | File | Message |" >> $GITHUB_STEP_SUMMARY
           echo "|------|----------|------|---------|" >> $GITHUB_STEP_SUMMARY
-          jq -r '
-            .runs[].results[] |
-            "| \(.ruleId) | \(.properties.severity // "n/a") | \(.locations[0].physicalLocation.artifactLocation.uri) | \(.message.text) |"
+          SEVERITY_CUTOFF="medium"
+          jq -r --arg cutoff "$SEVERITY_CUTOFF" '
+            .runs[].results[]
+            | select(.properties.severity | IN("medium","high","critical"))
+            | "| \(.ruleId) | \(.properties.severity // "n/a") | \(.locations[0].physicalLocation.artifactLocation.uri) | \(.message.text) |"
           ' ${{ steps.scan.outputs.sarif }} >> $GITHUB_STEP_SUMMARY || true
 
       - name: Upload SARIF report
