@@ -100,7 +100,7 @@ jobs:
           ' ${{ steps.scan.outputs.sarif }} || true
 
       - name: Summarize SARIF findings
-        if: always()
+        if: failure()
         run: |
           echo "### Vulnerability Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

@@ -44,6 +44,18 @@ jobs:
           name: semgrep-results
           path: semgrep-report.json
 
+      - name: Summarize Semgrep findings
+        if: ${{ steps.semgrep.outcome != 'success' }}
+        run: |
+          echo "### Semgrep Vulnerability Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Rule | Severity | Message |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|----------|---------|" >> $GITHUB_STEP_SUMMARY
+          jq -r '
+            .results[] |
+            "| \(.check_id) | \(.extra.severity) | \(.extra.message) |"
+          ' semgrep-report.json >> $GITHUB_STEP_SUMMARY || true
+
       - name: Fail on findings
         if: ${{ steps.semgrep.outcome != 'success' }}
         continue-on-error: ${{ inputs['continue-on-security-error'] }}
