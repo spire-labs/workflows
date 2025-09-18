@@ -10,7 +10,12 @@ on:
         type: string
         required: false
         default: "ubuntu-latest"
-
+      continue-on-security-error:
+        description: "Continue on security check errors"
+        required: false
+        type: boolean
+        default: false
+        
 permissions:
   contents: read
   packages: write
@@ -56,3 +61,57 @@ jobs:
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ env.CACHE_KEY }},mode=max
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
           build-args: ${{ inputs.build-args }}
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          format: spdx-json
+          output-file: "${{ github.event.repository.name }}-sbom.spdx.json"
+
+      - name: Cache Grype DB
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/grype/
+          key: grype-db-${{ runner.os }}-v1
+
+      - name: Scan image with Grype
+        id: scan
+        uses: anchore/scan-action@v7
+        with:
+          fail-build: true
+          severity-cutoff: high
+          output-format: sarif
+          sbom: "${{ github.event.repository.name }}-sbom.spdx.json"
+        continue-on-error: ${{ inputs.continue-on-security-error }}
+
+      - name: Annotate scan vulnerabilities
+        if: always()
+        run: |
+          jq -r '.runs[].tool.driver.rules[] |
+            "\(.shortDescription.text | split(" ")[1]) \(.id) \(.shortDescription.text)"' \
+            "${{ steps.scan.outputs.sarif }}" |
+          while read -r line; do
+            severity=$(echo "$line" | awk '{print tolower($1)}')
+            cve=$(echo "$line" | awk '{print $2}')
+            desc=$(echo "$line" | cut -d' ' -f3-)
+
+            # Extract pure CVE ID
+            cve_id=$(echo "$cve" | grep -oE 'CVE-[0-9]{4}-[0-9]+')
+            link="https://nvd.nist.gov/vuln/detail/$cve_id"
+
+            if [[ "$severity" == "high" || "$severity" == "critical" ]]; then
+              echo "::error title=$cve_id::$desc ($link)"
+            elif [[ "$severity" == "medium" ]]; then
+              echo "::warning title=$cve_id::$desc ($link)"
+            else
+              echo "::notice title=$cve_id::$desc ($link)"
+            fi
+          done
+
+      - name: Upload SARIF report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sarif-report
+          path: ${{ steps.scan.outputs.sarif }}

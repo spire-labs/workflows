@@ -61,7 +61,6 @@ jobs:
           cargo clippy --workspace --all-targets --all-features -- -D warnings
           taplo lint
           taplo fmt --check
-      
 
       - name: Cargo Deny Check
         continue-on-error: ${{ inputs['continue-on-security-error'] }}
