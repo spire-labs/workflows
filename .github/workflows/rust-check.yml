@@ -22,10 +22,6 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: read
-  checks: write
-  actions: read
 
 env:
   CARGO_TERM_COLOR: always
