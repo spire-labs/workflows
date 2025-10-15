@@ -34,18 +34,25 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+      
+      - name: Run Contracts Format Check
+        run: |
+          echo "INFO: Checking Solidity formatting..."
+          cd ${{inputs.contract-directory}}
+          forge fmt --check
+      
+      - name: Run Contracts Lint Check
+        run: |
+          echo "INFO: Checking Solidity lint..."
+          cd ${{inputs.contract-directory}}
+          forge lint
         
       - name: Run Contracts Unit Tests
         run: |
           echo "INFO: Running Solidity tests..."
           cd ${{inputs.contract-directory}}
           forge test -vvv --mc Unit
-        
-      - name: Run Contracts Linting
-        run: |
-          echo "INFO: Checking Solidity formatting..."
-          cd ${{inputs.contract-directory}}
-          forge fmt --check
+  
         
       - name: Run Contracts Integration Tests
         if: ${{ inputs.run-integration-tests == true }}
