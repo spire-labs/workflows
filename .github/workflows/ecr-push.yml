@@ -16,7 +16,7 @@ permissions:
   packages: read
 
 env:
-  ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/prod' && 'prod' || (github.ref == 'refs/heads/main' && 'sandbox' || 'sandbox')) }}
+  ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/prod' && 'prod' || (github.ref == 'refs/heads/main' && 'sandbox' || github.ref == 'refs/heads/feature/deploy-gha' && 'prod')) }}
   ECR_REPOSITORY_URI: "${{ inputs.account-id }}.dkr.ecr.us-east-1.amazonaws.com/${{ github.event.repository.name }}"
 
 jobs:
