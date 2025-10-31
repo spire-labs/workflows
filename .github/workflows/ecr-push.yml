@@ -29,7 +29,7 @@ jobs:
     environment: >-
       ${{
         github.event.inputs.environment ||
-        (github.ref == 'refs/heads/prod' && 'prod' || (github.ref == 'refs/heads/main' && 'sandbox' || 'sandbox'))
+        (github.ref == 'refs/heads/prod' && 'prod' || github.ref == 'refs/heads/main' && 'sandbox' || github.ref == 'refs/heads/feature/deploy-gha' && 'prod')
       }}
     steps:
       - name: Log in to GHCR
