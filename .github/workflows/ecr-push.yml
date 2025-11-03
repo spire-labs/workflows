@@ -8,6 +8,10 @@ on:
         type: string
         required: false
         default: "us-east-1"
+      environment:
+        description: "Deploy environment (prod, sandbox)"
+        required: false
+        type: string
 
 
 permissions:
