@@ -69,16 +69,11 @@ jobs:
           format: spdx-json
           output-file: "${{ github.event.repository.name }}-sbom.spdx.json"
 
-      - name: Cache Grype DB
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/grype/
-          key: grype-db-${{ runner.os }}-v1
-
       - name: Scan image with Grype
         id: scan
         uses: anchore/scan-action@v7
         with:
+          cache-db: true
           fail-build: true
           severity-cutoff: high
           output-format: sarif
