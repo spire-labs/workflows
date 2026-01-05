@@ -16,6 +16,11 @@ on:
         required: false
         default: ''
         type: string
+      use-bun:
+        type: boolean
+        required: false
+        default: false
+        description: whether to use Bun instead of Foundry for package management
           
 jobs:
   check:
@@ -34,6 +39,17 @@ jobs:
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+      
+      - name: Install Bun
+        if: ${{ inputs.use-bun == true }}
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.2.2
+
+      - name: Install dependencies
+        if: ${{ inputs.use-bun == true }}
+        run: |
+          bun install
       
       - name: Run Contracts Format Check
         run: |
