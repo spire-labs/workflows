@@ -21,15 +21,47 @@ on:
         required: false
         default: false
         description: whether to use Bun instead of Foundry for package management
+      private-submodule-repositories:
+        type: string
+        required: false
+        default: ""
+        description: "Newline-separated repositories to include in a GitHub App token for private submodules"
+      ci-submodules-app-client-id:
+        type: string
+        required: false
+        default: ""
+        description: "GitHub App client ID used to read private submodules"
+    secrets:
+      ci_submodules_app_private_key:
+        required: false
           
 jobs:
   check:
     name: "Solidity Check"
     runs-on: ubuntu-latest
     steps:
+      - name: Create GitHub App installation token
+        if: ${{ inputs.private-submodule-repositories != '' }}
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ inputs.ci-submodules-app-client-id }}
+          private-key: ${{ secrets.ci_submodules_app_private_key }}
+          owner: spire-labs
+          repositories: ${{ inputs.private-submodule-repositories }}
+          permission-contents: read
+
       - uses: actions/checkout@v4
+        if: ${{ inputs.private-submodule-repositories == '' }}
         with:
           submodules: recursive
+
+      - uses: actions/checkout@v4
+        if: ${{ inputs.private-submodule-repositories != '' }}
+        with:
+          persist-credentials: false
+          submodules: recursive
+          token: ${{ steps.app-token.outputs.token }}
       
       - name: Set dynamic environment variables
         if: ${{ inputs['env-vars'] != '' }}
