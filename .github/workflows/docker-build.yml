@@ -47,7 +47,7 @@ jobs:
             echo $CACHE_KEY
 
       - name: Build & push with build args
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile
@@ -63,7 +63,7 @@ jobs:
           build-args: ${{ inputs.build-args }}
 
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@v0.18.0
         with:
           image: ghcr.io/${{ github.repository }}:${{ github.sha }}
           format: spdx-json
