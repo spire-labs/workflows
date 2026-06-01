@@ -108,7 +108,7 @@ jobs:
             EXCLUDE_FLAGS=""
           fi
           if ! cargo test --workspace --all-targets --all-features $EXCLUDE_FLAGS 2>cargo-test.stderr; then
-            if grep -q "error: no packages to compile" cargo-test.stderr; then
+            if grep -q "no packages to compile" cargo-test.stderr; then
               cat cargo-test.stderr
               echo "All cargo test packages were excluded."
               exit 0
