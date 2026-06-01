@@ -21,11 +21,10 @@ on:
         required: false
         type: boolean
         default: false
-      github-token:
-        description: "Token to use for checkout and recursive submodule checkout"
+    secrets:
+      CI_REPO_READ_TOKEN:
+        description: "Token used to checkout the repository and private submodules"
         required: false
-        default: ""
-        type: string
 
 
 env:
@@ -39,7 +38,7 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
         with:
-          token: ${{ inputs['github-token'] || github.token }}
+          token: ${{ secrets.CI_REPO_READ_TOKEN || github.token }}
           submodules: recursive
 
       - name: Install Rust
@@ -58,7 +57,7 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
         with:
-          token: ${{ inputs['github-token'] || github.token }}
+          token: ${{ secrets.CI_REPO_READ_TOKEN || github.token }}
           submodules: recursive
 
       - name: Install Rust
