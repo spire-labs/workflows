@@ -15,6 +15,15 @@ on:
         required: false
         type: boolean
         default: false
+      submodules:
+        description: "Whether to checkout submodules. Use 'recursive' for repos whose Docker build needs submodules."
+        required: false
+        type: string
+        default: "false"
+    secrets:
+      CI_REPO_READ_TOKEN:
+        description: "Token used to checkout private submodules when submodules are enabled"
+        required: false
 
 permissions:
   contents: read
@@ -28,7 +37,8 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          token: ${{ secrets.CI_REPO_READ_TOKEN || github.token }}
+          submodules: ${{ inputs.submodules }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -79,15 +89,23 @@ jobs:
           fail-build: true
           severity-cutoff: high
           output-format: sarif
+          output-file: grype-results.sarif
           sbom: "${{ github.event.repository.name }}-sbom.spdx.json"
         continue-on-error: ${{ inputs.continue-on-security-error }}
 
       - name: Annotate scan vulnerabilities
         if: always()
+        env:
+          SARIF_FILE: grype-results.sarif
         run: |
+          if [[ -z "$SARIF_FILE" || ! -f "$SARIF_FILE" ]]; then
+            echo "::warning title=Missing SARIF report::Grype did not produce a SARIF report to annotate."
+            exit 0
+          fi
+
           jq -r '.runs[].tool.driver.rules[] |
             "\(.shortDescription.text | split(" ")[1]) \(.id) \(.shortDescription.text)"' \
-            "${{ steps.scan.outputs.sarif }}" |
+            "$SARIF_FILE" |
           while read -r line; do
             severity=$(echo "$line" | awk '{print tolower($1)}')
             cve=$(echo "$line" | awk '{print $2}')
@@ -107,8 +125,8 @@ jobs:
           done
 
       - name: Upload SARIF report
-        if: always()
+        if: always() && hashFiles('grype-results.sarif') != ''
         uses: actions/upload-artifact@v4
         with:
           name: sarif-report
-          path: ${{ steps.scan.outputs.sarif }}
+          path: grype-results.sarif
