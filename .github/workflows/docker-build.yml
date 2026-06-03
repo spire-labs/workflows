@@ -41,6 +41,7 @@ jobs:
           submodules: ${{ inputs.submodules }}
 
       - name: Set up Docker Buildx
+        id: setup-buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
@@ -57,6 +58,23 @@ jobs:
             BRANCH_HASH=$(echo -n "$BRANCH_NAME" | sha1sum | awk '{print $1}')
             echo "CACHE_KEY=branch-$BRANCH_HASH" >> $GITHUB_ENV
             echo $CACHE_KEY
+
+      - name: Cache Docker cache mounts
+        id: cache-mounts
+        uses: actions/cache@v4
+        with:
+          path: docker-cache-mounts
+          key: docker-cache-mounts-${{ runner.os }}-${{ github.event.repository.name }}-${{ hashFiles('Dockerfile', '**/Cargo.lock', '**/package-lock.json', '**/pnpm-lock.yaml', '**/yarn.lock', '**/bun.lock', '**/bun.lockb', '**/go.sum') }}
+          restore-keys: |
+            docker-cache-mounts-${{ runner.os }}-${{ github.event.repository.name }}-
+
+      - name: Restore Docker cache mounts
+        uses: reproducible-containers/buildkit-cache-dance@v3.4.0
+        with:
+          builder: ${{ steps.setup-buildx.outputs.name }}
+          cache-dir: docker-cache-mounts
+          dockerfile: Dockerfile
+          skip-extraction: ${{ steps.cache-mounts.outputs.cache-hit }}
 
       - name: Build & push with build args
         uses: docker/build-push-action@v6
