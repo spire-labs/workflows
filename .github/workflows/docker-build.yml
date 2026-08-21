@@ -113,6 +113,7 @@ jobs:
 
       - name: Annotate scan vulnerabilities
         if: always()
+        continue-on-error: ${{ inputs.continue-on-security-error }}
         env:
           SARIF_FILE: grype-results.sarif
         run: |
@@ -124,15 +125,20 @@ jobs:
           # Grype shortDescription is "<id> <severity> vulnerability for <pkg> package".
           # Rule ids are "CVE-…-<pkg>" or "GHSA-…-<pkg>". Do not grep under bash -e:
           # a GHSA id with no CVE match used to abort this step before any annotations.
+          # Emit critical/high first so those errors sit at the top of the annotation list.
           jq -r '
-            .runs[]?.tool.driver.rules[]? |
-            (.shortDescription.text // "") as $text |
-            ($text | capture("^(?<vuln>\\S+) (?<severity>\\S+)"; "n") // {}) as $m |
             [
-              (($m.severity // "unknown") | ascii_downcase),
-              ($m.vuln // .id),
-              $text
-            ] | @tsv
+              .runs[]?.tool.driver.rules[]? |
+              (.shortDescription.text // "") as $text |
+              ($text | capture("^(?<vuln>\\S+) (?<severity>\\S+)"; "n") // {}) as $m |
+              [
+                (($m.severity // "unknown") | ascii_downcase),
+                ($m.vuln // .id),
+                $text
+              ]
+            ]
+            | sort_by({"critical":0,"high":1,"medium":2}[.[0]] // 3)
+            | .[] | @tsv
           ' "$SARIF_FILE" |
           while IFS=$'\t' read -r severity vuln desc; do
             [[ -n "$vuln" ]] || continue
@@ -146,11 +152,9 @@ jobs:
             [[ -n "$link" ]] && suffix=" (${link})"
 
             case "$severity" in
-              # ::error marks the GitHub Actions step failed even when the
-              # script exits 0. Grype fail-build is the gate; annotations only
-              # surface findings.
-              high|critical|medium) echo "::warning title=${vuln}::${desc}${suffix}" ;;
-              *)                    echo "::notice title=${vuln}::${desc}${suffix}" ;;
+              high|critical) echo "::error title=${vuln}::${desc}${suffix}" ;;
+              medium)        echo "::warning title=${vuln}::${desc}${suffix}" ;;
+              *)             echo "::notice title=${vuln}::${desc}${suffix}" ;;
             esac
           done
 
