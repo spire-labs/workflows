@@ -121,25 +121,35 @@ jobs:
             exit 0
           fi
 
-          jq -r '.runs[].tool.driver.rules[] |
-            "\(.shortDescription.text | split(" ")[1]) \(.id) \(.shortDescription.text)"' \
-            "$SARIF_FILE" |
-          while read -r line; do
-            severity=$(echo "$line" | awk '{print tolower($1)}')
-            cve=$(echo "$line" | awk '{print $2}')
-            desc=$(echo "$line" | cut -d' ' -f3-)
-
-            # Extract pure CVE ID
-            cve_id=$(echo "$cve" | grep -oE 'CVE-[0-9]{4}-[0-9]+')
-            link="https://nvd.nist.gov/vuln/detail/$cve_id"
-
-            if [[ "$severity" == "high" || "$severity" == "critical" ]]; then
-              echo "::error title=$cve_id::$desc ($link)"
-            elif [[ "$severity" == "medium" ]]; then
-              echo "::warning title=$cve_id::$desc ($link)"
-            else
-              echo "::notice title=$cve_id::$desc ($link)"
+          # Grype shortDescription is "<id> <severity> vulnerability for <pkg> package".
+          # Rule ids are "CVE-…-<pkg>" or "GHSA-…-<pkg>". Do not grep under bash -e:
+          # a GHSA id with no CVE match used to abort this step before any annotations.
+          jq -r '
+            .runs[]?.tool.driver.rules[]? |
+            (.shortDescription.text // "") as $text |
+            ($text | capture("^(?<vuln>\\S+) (?<severity>\\S+)"; "n") // {}) as $m |
+            [
+              (($m.severity // "unknown") | ascii_downcase),
+              ($m.vuln // .id),
+              $text
+            ] | @tsv
+          ' "$SARIF_FILE" |
+          while IFS=$'\t' read -r severity vuln desc; do
+            [[ -n "$vuln" ]] || continue
+            link=""
+            if [[ "$vuln" == CVE-* ]]; then
+              link="https://nvd.nist.gov/vuln/detail/${vuln}"
+            elif [[ "$vuln" == GHSA-* ]]; then
+              link="https://github.com/advisories/${vuln}"
             fi
+            suffix=""
+            [[ -n "$link" ]] && suffix=" (${link})"
+
+            case "$severity" in
+              high|critical) echo "::error title=${vuln}::${desc}${suffix}" ;;
+              medium)        echo "::warning title=${vuln}::${desc}${suffix}" ;;
+              *)             echo "::notice title=${vuln}::${desc}${suffix}" ;;
+            esac
           done
 
       - name: Upload SARIF report
