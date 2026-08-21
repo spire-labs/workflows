@@ -146,9 +146,11 @@ jobs:
             [[ -n "$link" ]] && suffix=" (${link})"
 
             case "$severity" in
-              high|critical) echo "::error title=${vuln}::${desc}${suffix}" ;;
-              medium)        echo "::warning title=${vuln}::${desc}${suffix}" ;;
-              *)             echo "::notice title=${vuln}::${desc}${suffix}" ;;
+              # ::error marks the GitHub Actions step failed even when the
+              # script exits 0. Grype fail-build is the gate; annotations only
+              # surface findings.
+              high|critical|medium) echo "::warning title=${vuln}::${desc}${suffix}" ;;
+              *)                    echo "::notice title=${vuln}::${desc}${suffix}" ;;
             esac
           done
 
