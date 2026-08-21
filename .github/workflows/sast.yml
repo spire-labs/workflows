@@ -25,7 +25,7 @@ jobs:
     runs-on: ${{ inputs['runs-on'] }}
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Semgrep
         run: |
@@ -39,7 +39,7 @@ jobs:
       
       - name: Upload Semgrep results
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: semgrep-results
           path: semgrep-report.json

@@ -35,17 +35,17 @@ jobs:
     runs-on: ${{ inputs['runs-on'] }}
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.CI_REPO_READ_TOKEN || github.token }}
           submodules: ${{ inputs.submodules }}
 
       - name: Set up Docker Buildx
         id: setup-buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -61,7 +61,7 @@ jobs:
 
       - name: Cache Docker cache mounts
         id: cache-mounts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: docker-cache-mounts
           key: docker-cache-mounts-${{ runner.os }}-${{ github.event.repository.name }}-${{ hashFiles('Dockerfile', '**/Cargo.lock', '**/package-lock.json', '**/pnpm-lock.yaml', '**/yarn.lock', '**/bun.lock', '**/bun.lockb', '**/go.sum') }}
@@ -77,7 +77,7 @@ jobs:
           skip-extraction: ${{ steps.cache-mounts.outputs.cache-hit }}
 
       - name: Build & push with build args
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
@@ -93,7 +93,7 @@ jobs:
           build-args: ${{ inputs.build-args }}
 
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0.18.0
+        uses: anchore/sbom-action@v0.24.0
         with:
           image: ghcr.io/${{ github.repository }}:${{ github.sha }}
           format: spdx-json
@@ -144,7 +144,7 @@ jobs:
 
       - name: Upload SARIF report
         if: always() && hashFiles('grype-results.sarif') != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sarif-report
           path: grype-results.sarif
