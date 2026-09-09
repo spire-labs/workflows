@@ -20,6 +20,21 @@ on:
         required: false
         type: string
         default: "false"
+      dockerfile:
+        description: "Path to the Dockerfile (default: Dockerfile). Nested paths publish as <repo>/<dir>."
+        required: false
+        type: string
+        default: "Dockerfile"
+      context:
+        description: "Docker build context (default: repository root)"
+        required: false
+        type: string
+        default: "."
+      image:
+        description: "Override GHCR image name under ghcr.io/<owner>/"
+        required: false
+        type: string
+        default: ""
     secrets:
       CI_REPO_READ_TOKEN:
         description: "Token used to checkout private submodules when submodules are enabled"
@@ -39,6 +54,29 @@ jobs:
         with:
           token: ${{ secrets.CI_REPO_READ_TOKEN || github.token }}
           submodules: ${{ inputs.submodules }}
+
+      - name: Resolve image name
+        id: image
+        env:
+          IMAGE: ${{ inputs.image }}
+          DOCKERFILE: ${{ inputs.dockerfile }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          OWNER: ${{ github.repository_owner }}
+          SHA: ${{ github.sha }}
+        run: |
+          dockerfile="${DOCKERFILE#./}"
+          if [ -n "$IMAGE" ]; then
+            name="$IMAGE"
+          elif [ "$(dirname "$dockerfile")" = "." ]; then
+            name="$REPO_NAME"
+          else
+            name="$REPO_NAME/$(dirname "$dockerfile")"
+          fi
+          slug="${name//\//-}"
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+          echo "slug=${slug}" >> "$GITHUB_OUTPUT"
+          echo "ref=ghcr.io/${OWNER}/${name}:${SHA}" >> "$GITHUB_OUTPUT"
+          echo "cache=ghcr.io/${OWNER}/${name}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         id: setup-buildx
@@ -64,40 +102,40 @@ jobs:
         uses: actions/cache@v6
         with:
           path: docker-cache-mounts
-          key: docker-cache-mounts-${{ runner.os }}-${{ github.event.repository.name }}-${{ hashFiles('Dockerfile', '**/Cargo.lock', '**/package-lock.json', '**/pnpm-lock.yaml', '**/yarn.lock', '**/bun.lock', '**/bun.lockb', '**/go.sum') }}
+          key: docker-cache-mounts-${{ runner.os }}-${{ steps.image.outputs.slug }}-${{ hashFiles(inputs.dockerfile, '**/Cargo.lock', '**/package-lock.json', '**/pnpm-lock.yaml', '**/yarn.lock', '**/bun.lock', '**/bun.lockb', '**/go.sum') }}
           restore-keys: |
-            docker-cache-mounts-${{ runner.os }}-${{ github.event.repository.name }}-
+            docker-cache-mounts-${{ runner.os }}-${{ steps.image.outputs.slug }}-
 
       - name: Restore Docker cache mounts
         uses: reproducible-containers/buildkit-cache-dance@v3.4.0
         with:
           builder: ${{ steps.setup-buildx.outputs.name }}
           cache-dir: docker-cache-mounts
-          dockerfile: Dockerfile
+          dockerfile: ${{ inputs.dockerfile }}
           skip-extraction: ${{ steps.cache-mounts.outputs.cache-hit }}
 
       - name: Build & push with build args
         uses: docker/build-push-action@v7
         with:
-          context: .
-          file: Dockerfile
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ${{ steps.image.outputs.ref }}
           cache-from: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ env.CACHE_KEY }}
-            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache
+            type=registry,ref=${{ steps.image.outputs.cache }}:buildcache-${{ env.CACHE_KEY }}
+            type=registry,ref=${{ steps.image.outputs.cache }}:buildcache
           cache-to: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ env.CACHE_KEY }},mode=max
-            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
+            type=registry,ref=${{ steps.image.outputs.cache }}:buildcache-${{ env.CACHE_KEY }},mode=max
+            type=registry,ref=${{ steps.image.outputs.cache }}:buildcache,mode=max
           build-args: ${{ inputs.build-args }}
 
       - name: Generate SBOM
         uses: anchore/sbom-action@v0.24.0
         with:
-          image: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          image: ${{ steps.image.outputs.ref }}
           format: spdx-json
-          output-file: "${{ github.event.repository.name }}-sbom.spdx.json"
+          output-file: "${{ steps.image.outputs.slug }}-sbom.spdx.json"
 
       - name: Scan image with Grype
         id: scan
@@ -108,7 +146,7 @@ jobs:
           severity-cutoff: high
           output-format: sarif
           output-file: grype-results.sarif
-          sbom: "${{ github.event.repository.name }}-sbom.spdx.json"
+          sbom: "${{ steps.image.outputs.slug }}-sbom.spdx.json"
         continue-on-error: ${{ inputs.continue-on-security-error }}
 
       - name: Annotate scan vulnerabilities
@@ -162,5 +200,5 @@ jobs:
         if: always() && hashFiles('grype-results.sarif') != ''
         uses: actions/upload-artifact@v7
         with:
-          name: sarif-report
+          name: sarif-report-${{ steps.image.outputs.slug }}
           path: grype-results.sarif

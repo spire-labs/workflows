@@ -14,20 +14,21 @@ Builds and scans Docker images with security analysis.
 - Supports custom build arguments
 - Layer caching for faster builds
 
+Publishes `ghcr.io/<owner>/<repo>:<sha>`. A nested Dockerfile such as `web/Dockerfile` publishes `<repo>/web` instead.
+
 **Inputs:**
 - `build-args` - Docker build arguments (default: `GITHUB_SHA=${{ github.sha }}`)
 - `runs-on` - Runner OS (default: `ubuntu-latest`)
 - `continue-on-security-error` - Continue on security scan failures (default: `false`)
+- `dockerfile` - Dockerfile path (default: `Dockerfile`)
+- `context` - Build context (default: `.`)
+- `image` - Override the GHCR image name
 
 **Example:**
 ```yaml
 jobs:
   build:
     uses: spire-labs/workflows/.github/workflows/docker-build.yml@main
-    with:
-      build-args: |
-        VERSION=1.0.0
-        ENVIRONMENT=production
 ```
 
 ---
@@ -111,25 +112,26 @@ Tags and pushes Docker images to Amazon ECR.
 
 **Features:**
 - Pulls images from GHCR
-- Tags and pushes to AWS ECR
-- Supports multiple environments (prod, sandbox)
+- Tags and pushes to AWS ECR by git SHA
+- Optionally also tags sandbox/prod (on by default)
 - Uses OIDC for AWS authentication
 
+Copies the matching GHCR image to ECR (`<repo>` or `<repo>/<dir>` from `dockerfile`). Tags `:<sha>` and, by default, `:<environment>`.
+
 **Inputs:**
-- `account-id` - AWS account ID (required)
+- `account-id` - AWS account ID (default: Spire account)
 - `aws-region` - AWS region (default: `us-east-1`)
-- `environment` - Deployment environment
+- `environment` - GitHub environment for OIDC (default: `prod` on `prod`, otherwise `sandbox`)
+- `dockerfile` - Same path as docker-build, used to derive the image name
+- `image` - Override GHCR and ECR image name
+- `tag-environment` - Also write `:<environment>` (default: `true`)
 
 **Example:**
 ```yaml
 jobs:
-  deploy:
+  publish:
     uses: spire-labs/workflows/.github/workflows/ecr-push.yml@main
-    with:
-      account-id: "123456789012"
-      environment: "prod"
-    secrets:
-      OIDC_ROLE_ARN: ${{ secrets.OIDC_ROLE_ARN }}
+    secrets: inherit
 ```
 
 ---
