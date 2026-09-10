@@ -40,9 +40,9 @@ jobs:
           IMAGE: ghcr.io/${{ github.repository_owner }}/grype-db
           SOURCE: ${{ github.server_url }}/${{ github.repository }}
         run: |
-          mkdir -p build/db
-          cp -a "$HOME/.cache/grype/db/." build/db/
-          printf '%s\n' 'FROM scratch' 'COPY db /db' 'CMD ["/db"]' > build/Dockerfile
+          mkdir -p build
+          tar -C "$HOME/.cache/grype" --zstd -cf build/db.tar.zst db
+          printf '%s\n' 'FROM scratch' 'COPY db.tar.zst /db.tar.zst' 'CMD ["/db.tar.zst"]' > build/Dockerfile
           day=$(date -u +%Y-%m-%d)
           docker build \
             --label "org.opencontainers.image.source=${SOURCE}" \

@@ -88,11 +88,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set Docker Build Cache Key
+      - name: Prefetch org Grype DB
+        env:
+          GRYPE_DB_IMAGE: ghcr.io/${{ github.repository_owner }}/grype-db:latest
         run: |
-          BRANCH_NAME=$(echo "${GITHUB_REF}" | sed 's|refs/heads/||')
-          BRANCH_HASH=$(echo -n "$BRANCH_NAME" | sha1sum | awk '{print $1}')
-          echo "CACHE_KEY=branch-$BRANCH_HASH" >> "$GITHUB_ENV"
+          mkdir -p "$HOME/.cache/grype"
+          echo false > "$RUNNER_TEMP/grype-db.hit"
+          (
+            if docker pull "$GRYPE_DB_IMAGE" && cid=$(docker create "$GRYPE_DB_IMAGE" /db.tar.zst); then
+              docker cp "$cid":/db.tar.zst "$RUNNER_TEMP/grype-db.tar.zst"
+              docker rm "$cid"
+              tar -C "$HOME/.cache/grype" --zstd -xf "$RUNNER_TEMP/grype-db.tar.zst"
+              echo true > "$RUNNER_TEMP/grype-db.hit"
+            fi
+          ) >"$RUNNER_TEMP/grype-db.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/grype-db.pid"
 
       - name: Build & push with build args
         uses: docker/build-push-action@v7
@@ -102,9 +112,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.image.outputs.ref }}
-          cache-from: |
-            type=registry,ref=${{ steps.image.outputs.cache }}:buildcache-${{ env.CACHE_KEY }}
-            type=registry,ref=${{ steps.image.outputs.cache }}:buildcache
+          cache-from: type=registry,ref=${{ steps.image.outputs.cache }}:buildcache
           cache-to: type=registry,ref=${{ steps.image.outputs.cache }}:buildcache,mode=max
           build-args: ${{ inputs.build-args }}
 
@@ -115,15 +123,15 @@ jobs:
           format: spdx-json
           output-file: "${{ steps.image.outputs.slug }}-sbom.spdx.json"
 
-      - name: Restore org Grype DB
+      - name: Wait for Grype DB
         id: grype-db
-        continue-on-error: true
         run: |
-          image="ghcr.io/${{ github.repository_owner }}/grype-db:latest"
-          mkdir -p "$HOME/.cache/grype/db"
-          if docker pull "$image" && cid=$(docker create "$image" /db); then
-            docker cp "$cid":/db/. "$HOME/.cache/grype/db/"
-            docker rm "$cid"
+          pid=$(cat "$RUNNER_TEMP/grype-db.pid")
+          while kill -0 "$pid" 2>/dev/null; do
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/grype-db.log" || true
+          if [[ "$(cat "$RUNNER_TEMP/grype-db.hit" 2>/dev/null)" == true ]]; then
             echo "hit=true" >> "$GITHUB_OUTPUT"
           else
             echo "hit=false" >> "$GITHUB_OUTPUT"
