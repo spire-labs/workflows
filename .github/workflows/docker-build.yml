@@ -109,9 +109,11 @@ jobs:
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.dockerfile }}
-          push: true
           tags: |
             ${{ steps.image.outputs.ref }}
+          outputs: |
+            type=docker
+            type=registry
           cache-from: type=registry,ref=${{ steps.image.outputs.cache }}:buildcache
           cache-to: type=registry,ref=${{ steps.image.outputs.cache }}:buildcache,mode=max
           build-args: ${{ inputs.build-args }}
@@ -119,10 +121,11 @@ jobs:
       - name: Generate SBOM
         uses: anchore/sbom-action@v0.24.0
         with:
-          image: ${{ steps.image.outputs.ref }}
+          image: docker:${{ steps.image.outputs.ref }}
           format: spdx-json
           output-file: "${{ steps.image.outputs.slug }}-sbom.spdx.json"
           config: ${{ hashFiles('syft.yaml') != '' && 'syft.yaml' || '' }}
+          upload-artifact: false
           upload-release-assets: false
 
       - name: Wait for Grype DB
