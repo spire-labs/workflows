@@ -1,0 +1,54 @@
+# Downloads and migrates the Grype vulnerability DB once per day, then publishes
+# ghcr.io/<org>/grype-db for every repo's docker-build scan to reuse.
+#
+# After the first publish, set the package visibility to Internal (Package
+# settings) so GITHUB_TOKEN in other org repos can pull it. Anchore rebuilds
+# the upstream DB around 06:30 UTC.
+
+on:
+  schedule:
+    - cron: "30 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  refresh:
+    name: Publish Grype DB
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Grype
+        run: |
+          # Keep in lockstep with anchore/scan-action@v7.
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
+            | sh -s -- -b /usr/local/bin v0.110.0
+
+      - name: Download and migrate vulnerability DB
+        run: grype db update
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish DB image
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/grype-db
+          SOURCE: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          mkdir -p build/db
+          cp -a "$HOME/.cache/grype/db/." build/db/
+          printf '%s\n' 'FROM scratch' 'COPY db /db' > build/Dockerfile
+          day=$(date -u +%Y-%m-%d)
+          docker build \
+            --label "org.opencontainers.image.source=${SOURCE}" \
+            --label "org.opencontainers.image.description=Daily Grype vulnerability database" \
+            --tag "${IMAGE}:latest" \
+            --tag "${IMAGE}:${day}" \
+            build
+          docker push "${IMAGE}:latest"
+          docker push "${IMAGE}:${day}"
