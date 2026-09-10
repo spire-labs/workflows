@@ -122,6 +122,8 @@ jobs:
           image: ${{ steps.image.outputs.ref }}
           format: spdx-json
           output-file: "${{ steps.image.outputs.slug }}-sbom.spdx.json"
+          config: ${{ hashFiles('syft.yaml') != '' && 'syft.yaml' || '' }}
+          upload-release-assets: false
 
       - name: Wait for Grype DB
         id: grype-db

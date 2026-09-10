@@ -16,6 +16,8 @@ Builds and scans Docker images with security analysis.
 
 Publishes `ghcr.io/<owner>/<repo>:<sha>`. A nested Dockerfile such as `web/Dockerfile` publishes `<repo>/web` instead.
 
+If the calling repo has a `syft.yaml` at the root, SBOM generation uses it. Otherwise Syft runs with its defaults.
+
 **Inputs:**
 - `build-args` - Docker build arguments (default: `GITHUB_SHA=${{ github.sha }}`)
 - `runs-on` - Runner OS (default: `ubuntu-latest`)
