@@ -121,8 +121,7 @@ jobs:
         run: |
           image="ghcr.io/${{ github.repository_owner }}/grype-db:latest"
           mkdir -p "$HOME/.cache/grype/db"
-          if docker pull "$image"; then
-            cid=$(docker create "$image")
+          if docker pull "$image" && cid=$(docker create "$image" /db); then
             docker cp "$cid":/db/. "$HOME/.cache/grype/db/"
             docker rm "$cid"
             echo "hit=true" >> "$GITHUB_OUTPUT"

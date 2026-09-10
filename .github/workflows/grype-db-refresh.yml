@@ -42,7 +42,7 @@ jobs:
         run: |
           mkdir -p build/db
           cp -a "$HOME/.cache/grype/db/." build/db/
-          printf '%s\n' 'FROM scratch' 'COPY db /db' > build/Dockerfile
+          printf '%s\n' 'FROM scratch' 'COPY db /db' 'CMD ["/db"]' > build/Dockerfile
           day=$(date -u +%Y-%m-%d)
           docker build \
             --label "org.opencontainers.image.source=${SOURCE}" \
