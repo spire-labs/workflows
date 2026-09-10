@@ -80,7 +80,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-session-name: "${{ github.event.repository.name }}-TagImage-${{ env.ENVIRONMENT }}"
-          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN || vars.OIDC_ROLE_ARN }}
           aws-region: ${{ inputs.aws-region }}
 
       - name: Login to Amazon ECR
