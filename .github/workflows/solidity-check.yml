@@ -51,12 +51,12 @@ jobs:
           repositories: ${{ inputs.private-submodule-repositories }}
           permission-contents: read
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: ${{ inputs.private-submodule-repositories == '' }}
         with:
           submodules: recursive
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: ${{ inputs.private-submodule-repositories != '' }}
         with:
           persist-credentials: false
