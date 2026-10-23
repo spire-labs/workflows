@@ -66,7 +66,6 @@ jobs:
           else
             name="$REPO_NAME/$(dirname "$dockerfile")"
           fi
-          echo "repository=${name}" >> "$GITHUB_OUTPUT"
           echo "ghcr=ghcr.io/${OWNER}/${name}:${SHA}" >> "$GITHUB_OUTPUT"
           echo "ecr=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${name}" >> "$GITHUB_OUTPUT"
 
@@ -98,35 +97,16 @@ jobs:
           ENVIRONMENT: ${{ env.ENVIRONMENT }}
           GHCR_REF: ${{ steps.image.outputs.ghcr }}
           ECR_URI: ${{ steps.image.outputs.ecr }}
-          REPOSITORY: ${{ steps.image.outputs.repository }}
-          ACCOUNT_ID: ${{ inputs.account-id }}
           SHA: ${{ github.sha }}
         run: |
           # SHA tags are immutable, so a redeploy of the same commit reuses the existing image.
-          failure_code=$(aws ecr batch-get-image \
-            --registry-id "${ACCOUNT_ID}" \
-            --repository-name "${REPOSITORY}" \
-            --image-ids "imageTag=${SHA}" \
-            --query 'failures[0].failureCode' \
-            --output text)
-          case "${failure_code}" in
-            None)
-              echo "${ECR_URI}:${SHA} already exists, skipping push"
-              if [ "${TAG_ENVIRONMENT}" = "true" ]; then
-                docker buildx imagetools create \
-                  --tag "${ECR_URI}:${ENVIRONMENT}" \
-                  "${ECR_URI}:${SHA}"
-                echo "Tagged ${ECR_URI}:${ENVIRONMENT}"
-              fi
-              exit 0
-              ;;
-            ImageNotFound) ;;
-            *)
-              echo "Failed to look up ${ECR_URI}:${SHA} (${failure_code})" >&2
-              exit 1
-              ;;
-          esac
-
+          if docker buildx imagetools inspect "${ECR_URI}:${SHA}" >/dev/null 2>&1; then
+            echo "${ECR_URI}:${SHA} already exists, skipping push"
+            if [ "${TAG_ENVIRONMENT}" = "true" ]; then
+              docker buildx imagetools create --tag "${ECR_URI}:${ENVIRONMENT}" "${ECR_URI}:${SHA}"
+            fi
+            exit 0
+          fi
           extra_args=()
           if [ "${TAG_ENVIRONMENT}" = "true" ]; then
             extra_args+=(--tag "${ECR_URI}:${ENVIRONMENT}")
