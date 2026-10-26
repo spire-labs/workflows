@@ -99,6 +99,14 @@ jobs:
           ECR_URI: ${{ steps.image.outputs.ecr }}
           SHA: ${{ github.sha }}
         run: |
+          # SHA tags are immutable, so a redeploy of the same commit reuses the existing image.
+          if docker buildx imagetools inspect "${ECR_URI}:${SHA}" >/dev/null 2>&1; then
+            echo "${ECR_URI}:${SHA} already exists, skipping push"
+            if [ "${TAG_ENVIRONMENT}" = "true" ]; then
+              docker buildx imagetools create --tag "${ECR_URI}:${ENVIRONMENT}" "${ECR_URI}:${SHA}"
+            fi
+            exit 0
+          fi
           extra_args=()
           if [ "${TAG_ENVIRONMENT}" = "true" ]; then
             extra_args+=(--tag "${ECR_URI}:${ENVIRONMENT}")
